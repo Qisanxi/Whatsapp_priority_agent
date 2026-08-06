@@ -14,17 +14,22 @@ def receive_message(msg: IncomingMessage, db: Session = Depends(get_db)):
     priority = classify_priority(msg.content)
     ai_reply = generate_reply(msg.content, priority)
     
+    # Auto-reply for URGENT and HIGH — no human needed
+    auto_reply = priority in ["URGENT", "HIGH"]
+    
     db_msg = Message(
         sender_phone=msg.sender_phone,
         sender_name=msg.sender_name or "Unknown",
         content=msg.content,
         priority=priority,
-        ai_reply=ai_reply
+        ai_reply=ai_reply,
+        status="replied" if auto_reply else "pending"
     )
     db.add(db_msg)
     db.commit()
     db.refresh(db_msg)
     
+    # Save conversation
     db.add(Conversation(message_id=db_msg.id, role="user", content=msg.content))
     db.add(Conversation(message_id=db_msg.id, role="assistant", content=ai_reply))
     db.commit()
@@ -33,7 +38,8 @@ def receive_message(msg: IncomingMessage, db: Session = Depends(get_db)):
         "id": db_msg.id,
         "priority": priority,
         "ai_reply": ai_reply,
-        "status": "pending_approval"
+        "status": "replied" if auto_reply else "pending_approval",
+        "auto_replied": auto_reply
     }
 
 @router.get("/messages")

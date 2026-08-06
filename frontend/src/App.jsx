@@ -106,24 +106,24 @@ export default function App() {
               <Send size={18} className="text-whatsapp-light" />
               Simulate Message
             </h2>
-            <input 
+            <input
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-whatsapp-light"
               placeholder="Phone number"
               value={simPhone}
               onChange={e => setSimPhone(e.target.value)}
             />
-            <textarea 
+            <textarea
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-whatsapp-light"
               placeholder="Type a customer message..."
               value={simContent}
               onChange={e => setSimContent(e.target.value)}
             />
-            <button 
+            <button
               onClick={simulateMessage}
               disabled={loading}
               className="w-full bg-whatsapp-light hover:bg-whatsapp-dark text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? 'Classifying...' : <><Send size={16}/> Send & Classify</>}
+              {loading ? 'Classifying...' : <><Send size={16} /> Send & Classify</>}
             </button>
           </div>
 
@@ -178,19 +178,18 @@ export default function App() {
                 </div>
               )}
               {messages.map(m => (
-                <div 
-                  key={m.id} 
-                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors border-l-4 ${
-                    m.priority === 'URGENT' ? 'border-red-500 bg-red-50' :
-                    m.priority === 'HIGH' ? 'border-orange-500 bg-orange-50' :
-                    m.priority === 'NORMAL' ? 'border-green-500 bg-green-50' :
-                    'border-gray-400 bg-gray-50'
-                  }`}
+                <div
+                  key={m.id}
+                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors border-l-4 ${m.priority === 'URGENT' ? 'border-red-500 bg-red-50' :
+                      m.priority === 'HIGH' ? 'border-orange-500 bg-orange-50' :
+                        m.priority === 'NORMAL' ? 'border-green-500 bg-green-50' :
+                          'border-gray-400 bg-gray-50'
+                    }`}
                   onClick={() => setSelectedMsg(m)}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span 
+                      <span
                         className="text-xs font-bold text-white px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: PRIORITY_COLORS[m.priority] }}
                       >
@@ -199,13 +198,15 @@ export default function App() {
                       <span className="text-sm font-medium text-gray-700">{m.sender_name}</span>
                       <span className="text-xs text-gray-400">{m.sender_phone}</span>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      m.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                      m.status === 'replied' ? 'bg-green-100 text-green-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {m.status}
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                        m.status === 'replied' && m.priority === 'URGENT' ? 'bg-red-100 text-red-700 font-bold' :
+                          m.status === 'replied' && m.priority === 'HIGH' ? 'bg-orange-100 text-orange-700 font-bold' :
+                            m.status === 'replied' ? 'bg-green-100 text-green-700' :
+                              'bg-red-100 text-red-700'
+                      }`}>
+                      {m.status === 'replied' && m.priority in ['URGENT', 'HIGH'] ? 'Auto-Replied' : m.status}
                     </span>
+
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-2">{m.content}</p>
                   <p className="text-xs text-gray-400 mt-1">{new Date(m.created_at).toLocaleString()}</p>
@@ -234,7 +235,7 @@ export default function App() {
                   <div className="bg-white rounded-lg rounded-tl-none px-4 py-3 max-w-[80%] shadow-sm border border-gray-200">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold text-whatsapp-light">AI Agent</span>
-                      <span 
+                      <span
                         className="text-xs text-white px-1.5 py-0.5 rounded"
                         style={{ backgroundColor: PRIORITY_COLORS[selectedMsg.priority] }}
                       >
@@ -246,13 +247,13 @@ export default function App() {
                 </div>
               </div>
               <div className="p-4 border-t border-gray-200 flex gap-3">
-                <button 
+                <button
                   onClick={() => handleApprove(selectedMsg.id, true)}
                   className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <CheckCircle size={16} /> Approve & Send
                 </button>
-                <button 
+                <button
                   onClick={() => handleApprove(selectedMsg.id, false)}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
