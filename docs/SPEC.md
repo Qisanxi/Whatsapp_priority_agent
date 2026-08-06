@@ -8,12 +8,12 @@ Small businesses receive hundreds of WhatsApp messages daily. Critical issues (o
 
 ┌─────────────────────────────────────────────┐
 │           User / WhatsApp Business API      │
-│                    │                        │
+│                    │                          │
 │         ┌────────▼─────────┐                │
 │         │   React Frontend │                │
 │         │  (Simulator UI)  │                │
 │         └────────┬─────────┘                │
-│                  │ HTTP                     │
+│                  │ HTTP                      │
 │    ┌─────────────▼──────────────┐           │
 │    │      FastAPI Backend       │           │
 │    │  ┌─────────────────────┐   │           │
@@ -21,18 +21,19 @@ Small businesses receive hundreds of WhatsApp messages daily. Critical issues (o
 │    │  │  (Messages, Conv)   │   │           │
 │    │  └─────────────────────┘   │           │
 │    │            │               │           │
-│    │    ┌───────▼───────┐       │           │
-│    │    │  OpenAI SDK   │       │           │
-│    │    │  (Compatible) │       │           │
-│    │    └───────┬───────┘       │           │
-│    └────────────┼────────────── ┘           │
+│    │    ┌───────▼───────┐      │           │
+│    │    │  OpenAI SDK   │      │           │
+│    │    │  (Compatible) │      │           │
+│    │    └───────┬───────┘      │           │
+│    └────────────┼──────────────┘           │
 │                 │ HTTP                      │
-│    ┌────────────▼──────────────┐            │
-│    │  AMD Radeon Cloud vLLM    │            │
-│    │  Qwen2.5-7B-Instruct      │            │
-│    │  ROCm GPU Inference       │            │
-│    └───────────────────────────┘            │
+│    ┌────────────▼──────────────┐           │
+│    │  AMD Radeon Cloud vLLM   │           │
+│    │  Qwen2.5-7B-Instruct     │           │
+│    │  ROCm GPU Inference      │           │
+│    └───────────────────────────┘           │
 └─────────────────────────────────────────────┘
+
 
 
 ## 3. Core Capabilities
