@@ -6,34 +6,7 @@ Small businesses receive hundreds of WhatsApp messages daily. Critical issues (o
 
 ## 2. Agent Architecture
 
-┌─────────────────────────────────────────────┐
-│           User / WhatsApp Business API      │
-│                    │                          │
-│         ┌────────▼─────────┐                │
-│         │   React Frontend │                │
-│         │  (Simulator UI)  │                │
-│         └────────┬─────────┘                │
-│                  │ HTTP                      │
-│    ┌─────────────▼──────────────┐           │
-│    │      FastAPI Backend       │           │
-│    │  ┌─────────────────────┐   │           │
-│    │  │   PostgreSQL        │   │           │
-│    │  │  (Messages, Conv)   │   │           │
-│    │  └─────────────────────┘   │           │
-│    │            │               │           │
-│    │    ┌───────▼───────┐      │           │
-│    │    │  OpenAI SDK   │      │           │
-│    │    │  (Compatible) │      │           │
-│    │    └───────┬───────┘      │           │
-│    └────────────┼──────────────┘           │
-│                 │ HTTP                      │
-│    ┌────────────▼──────────────┐           │
-│    │  AMD Radeon Cloud vLLM   │           │
-│    │  Qwen2.5-7B-Instruct     │           │
-│    │  ROCm GPU Inference      │           │
-│    └───────────────────────────┘           │
-└─────────────────────────────────────────────┘
-
+![Architecture Diagram](./architecture.png)
 
 
 ## 3. Core Capabilities
