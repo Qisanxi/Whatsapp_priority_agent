@@ -114,34 +114,34 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* LEFT COLUMN */}
         <div className="lg:col-span-1 space-y-6">
-          
+
           {/* Simulator */}
           <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Send size={18} className="text-whatsapp-light" />
               Simulate Message
             </h2>
-            <input 
+            <input
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-whatsapp-light"
               placeholder="Phone number"
               value={simPhone}
               onChange={e => setSimPhone(e.target.value)}
             />
-            <textarea 
+            <textarea
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-whatsapp-light"
               placeholder="Type a customer message..."
               value={simContent}
               onChange={e => setSimContent(e.target.value)}
             />
-            <button 
+            <button
               onClick={simulateMessage}
               disabled={loading}
               className="w-full bg-whatsapp-light hover:bg-whatsapp-dark text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? 'Classifying...' : <><Send size={16}/> Send & Classify</>}
+              {loading ? 'Classifying...' : <><Send size={16} /> Send & Classify</>}
             </button>
           </div>
 
@@ -198,11 +198,10 @@ export default function App() {
                 </div>
               )}
               {contacts.map(c => (
-                <div 
-                  key={c.sender_phone} 
-                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                    selectedPhone === c.sender_phone ? 'bg-gray-100' : ''
-                  }`}
+                <div
+                  key={c.sender_phone}
+                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedPhone === c.sender_phone ? 'bg-gray-100' : ''
+                    }`}
                   onClick={() => fetchThread(c.sender_phone)}
                 >
                   <div className="flex items-center gap-3">
@@ -215,7 +214,7 @@ export default function App() {
                         <span className="text-xs text-gray-400">{new Date(c.updated_at).toLocaleTimeString()}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span 
+                        <span
                           className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded-full"
                           style={{ backgroundColor: PRIORITY_COLORS[c.last_priority] }}
                         >
@@ -241,6 +240,12 @@ export default function App() {
           {selectedContact ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
               <div className="px-5 py-4 border-b border-gray-100 bg-whatsapp-chat flex items-center gap-3">
+                <button
+                  onClick={() => setSelectedPhone(null)}
+                  className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                </button>
                 <div className="w-8 h-8 rounded-full bg-whatsapp-light text-white flex items-center justify-center font-bold text-xs">
                   {selectedContact.sender_name?.charAt(0)}
                 </div>
@@ -249,7 +254,7 @@ export default function App() {
                   <p className="text-xs text-gray-500">{selectedContact.sender_phone}</p>
                 </div>
               </div>
-              
+
               <div className="flex-1 p-4 bg-whatsapp-chat overflow-y-auto space-y-4">
                 {thread.map(t => (
                   <div key={t.id} className="space-y-3">
@@ -267,7 +272,7 @@ export default function App() {
                       <div className="bg-white rounded-lg rounded-tl-none px-4 py-2 max-w-[85%] shadow-sm border border-gray-200">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[10px] font-bold text-whatsapp-light">AI Agent</span>
-                          <span 
+                          <span
                             className="text-[10px] text-white px-1.5 py-0.5 rounded"
                             style={{ backgroundColor: PRIORITY_COLORS[t.priority] }}
                           >
@@ -280,16 +285,16 @@ export default function App() {
                           )}
                         </div>
                         <p className="text-sm text-gray-700">{t.ai_reply}</p>
-                        
+
                         {t.status === 'pending' && (
                           <div className="flex gap-2 mt-2">
-                            <button 
+                            <button
                               onClick={() => handleApprove(t.id, true)}
                               className="flex-1 bg-green-500 hover:bg-green-600 text-white py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
                             >
                               <CheckCircle size={12} /> Approve
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleApprove(t.id, false)}
                               className="flex-1 bg-red-500 hover:bg-red-600 text-white py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
                             >
