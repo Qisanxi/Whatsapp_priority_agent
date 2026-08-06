@@ -18,7 +18,7 @@ app.add_middleware(
 
 app.include_router(messages_router)
 
-build_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
+build_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 if os.path.exists(build_dir):
     app.mount("/static", StaticFiles(directory=os.path.join(build_dir, "static")), name="static")
 

@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+
+@theme {
+  --color-whatsapp-dark: #075e54;
+  --color-whatsapp-light: #128c7e;
+  --color-whatsapp-bg: #f0f2f5;
+  --color-whatsapp-chat: #e5ddd5;
+  --color-whatsapp-user: #dcf8c6;
+}
