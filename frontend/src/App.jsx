@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { MessageCircle, AlertTriangle, Clock, CheckCircle, XCircle, Send, Shield } from 'lucide-react'
+import { MessageCircle, AlertTriangle, Clock, CheckCircle, XCircle, Send, Shield, User } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -12,18 +12,19 @@ const PRIORITY_COLORS = {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState([])
-  const [selectedMsg, setSelectedMsg] = useState(null)
+  const [contacts, setContacts] = useState([])
+  const [selectedPhone, setSelectedPhone] = useState(null)
+  const [thread, setThread] = useState([])
   const [stats, setStats] = useState(null)
   const [simContent, setSimContent] = useState('')
   const [simPhone, setSimPhone] = useState('+919999999999')
   const [loading, setLoading] = useState(false)
 
-  const fetchMessages = async () => {
+  const fetchContacts = async () => {
     try {
-      const res = await fetch(`${API}/messages`)
+      const res = await fetch(`${API}/inbox`)
       const data = await res.json()
-      setMessages(data)
+      setContacts(data)
     } catch (e) { console.error(e) }
   }
 
@@ -35,15 +36,25 @@ export default function App() {
     } catch (e) { console.error(e) }
   }
 
+  const fetchThread = async (phone) => {
+    try {
+      const res = await fetch(`${API}/conversations/${encodeURIComponent(phone)}`)
+      const data = await res.json()
+      setThread(data)
+      setSelectedPhone(phone)
+    } catch (e) { console.error(e) }
+  }
+
   useEffect(() => {
-    fetchMessages()
+    fetchContacts()
     fetchStats()
     const interval = setInterval(() => {
-      fetchMessages()
+      fetchContacts()
       fetchStats()
+      if (selectedPhone) fetchThread(selectedPhone)
     }, 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [selectedPhone])
 
   const simulateMessage = async () => {
     if (!simContent.trim()) return
@@ -59,8 +70,9 @@ export default function App() {
         })
       })
       setSimContent('')
-      fetchMessages()
+      fetchContacts()
       fetchStats()
+      if (selectedPhone === simPhone) fetchThread(simPhone)
     } catch (e) { alert('Error: ' + e.message) }
     setLoading(false)
   }
@@ -72,14 +84,16 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approved })
       })
-      fetchMessages()
-      setSelectedMsg(null)
+      fetchContacts()
+      if (selectedPhone) fetchThread(selectedPhone)
     } catch (e) { alert('Error: ' + e.message) }
   }
 
   const statData = stats ? Object.entries(stats.priority_distribution || {}).map(([name, value]) => ({
     name, value: value || 0
   })) : []
+
+  const selectedContact = contacts.find(c => c.sender_phone === selectedPhone)
 
   return (
     <div className="min-h-screen bg-whatsapp-bg">
@@ -100,33 +114,38 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* LEFT COLUMN */}
         <div className="lg:col-span-1 space-y-6">
+          
+          {/* Simulator */}
           <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Send size={18} className="text-whatsapp-light" />
               Simulate Message
             </h2>
-            <input
+            <input 
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-whatsapp-light"
               placeholder="Phone number"
               value={simPhone}
               onChange={e => setSimPhone(e.target.value)}
             />
-            <textarea
+            <textarea 
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-whatsapp-light"
               placeholder="Type a customer message..."
               value={simContent}
               onChange={e => setSimContent(e.target.value)}
             />
-            <button
+            <button 
               onClick={simulateMessage}
               disabled={loading}
               className="w-full bg-whatsapp-light hover:bg-whatsapp-dark text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? 'Classifying...' : <><Send size={16} /> Send & Classify</>}
+              {loading ? 'Classifying...' : <><Send size={16}/> Send & Classify</>}
             </button>
           </div>
 
+          {/* Stats */}
           <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
             <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
               <AlertTriangle size={18} className="text-orange-500" />
@@ -160,105 +179,135 @@ export default function App() {
           </div>
         </div>
 
-        <div className="lg:col-span-2 space-y-6">
+        {/* MIDDLE: CONTACT LIST */}
+        <div className="lg:col-span-1 space-y-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <MessageCircle size={18} className="text-whatsapp-light" />
-                Inbox
+                <User size={18} className="text-whatsapp-light" />
+                Contacts
               </h2>
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                Auto-refresh every 3s
+                {contacts.length} chats
               </span>
             </div>
-            <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-              {messages.length === 0 && (
+            <div className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
+              {contacts.length === 0 && (
                 <div className="p-8 text-center text-gray-400">
-                  No messages yet. Simulate one from the left panel.
+                  No contacts yet. Simulate a message.
                 </div>
               )}
-              {messages.map(m => (
-                <div
-                  key={m.id}
-                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors border-l-4 ${m.priority === 'URGENT' ? 'border-red-500 bg-red-50' :
-                      m.priority === 'HIGH' ? 'border-orange-500 bg-orange-50' :
-                        m.priority === 'NORMAL' ? 'border-green-500 bg-green-50' :
-                          'border-gray-400 bg-gray-50'
-                    }`}
-                  onClick={() => setSelectedMsg(m)}
+              {contacts.map(c => (
+                <div 
+                  key={c.sender_phone} 
+                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+                    selectedPhone === c.sender_phone ? 'bg-gray-100' : ''
+                  }`}
+                  onClick={() => fetchThread(c.sender_phone)}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-xs font-bold text-white px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: PRIORITY_COLORS[m.priority] }}
-                      >
-                        {m.priority}
-                      </span>
-                      <span className="text-sm font-medium text-gray-700">{m.sender_name}</span>
-                      <span className="text-xs text-gray-400">{m.sender_phone}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-whatsapp-light text-white flex items-center justify-center font-bold text-sm">
+                      {c.sender_name?.charAt(0) || '?'}
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                        m.status === 'replied' && m.priority === 'URGENT' ? 'bg-red-100 text-red-700 font-bold' :
-                          m.status === 'replied' && m.priority === 'HIGH' ? 'bg-orange-100 text-orange-700 font-bold' :
-                            m.status === 'replied' ? 'bg-green-100 text-green-700' :
-                              'bg-red-100 text-red-700'
-                      }`}>
-                      {m.status === 'replied' && m.priority in ['URGENT', 'HIGH'] ? 'Auto-Replied' : m.status}
-                    </span>
-
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-800 truncate">{c.sender_name}</span>
+                        <span className="text-xs text-gray-400">{new Date(c.updated_at).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span 
+                          className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded-full"
+                          style={{ backgroundColor: PRIORITY_COLORS[c.last_priority] }}
+                        >
+                          {c.last_priority}
+                        </span>
+                        <span className="text-xs text-gray-500 truncate flex-1">{c.last_message}</span>
+                        {c.unread_count > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                            {c.unread_count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 line-clamp-2">{m.content}</p>
-                  <p className="text-xs text-gray-400 mt-1">{new Date(m.created_at).toLocaleString()}</p>
                 </div>
               ))}
             </div>
           </div>
+        </div>
 
-          {selectedMsg && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-whatsapp-chat">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Clock size={18} className="text-whatsapp-light" />
-                  Conversation
-                </h2>
-              </div>
-              <div className="p-5 bg-whatsapp-chat min-h-[200px] space-y-4">
-                <div className="flex justify-end">
-                  <div className="bg-whatsapp-user rounded-lg rounded-tr-none px-4 py-3 max-w-[80%] shadow-sm">
-                    <p className="text-sm font-medium text-gray-800 mb-1">{selectedMsg.sender_name}</p>
-                    <p className="text-sm text-gray-700">{selectedMsg.content}</p>
-                    <p className="text-xs text-gray-500 mt-1 text-right">{new Date(selectedMsg.created_at).toLocaleTimeString()}</p>
-                  </div>
+        {/* RIGHT: CHAT THREAD */}
+        <div className="lg:col-span-1 space-y-6">
+          {selectedContact ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
+              <div className="px-5 py-4 border-b border-gray-100 bg-whatsapp-chat flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-whatsapp-light text-white flex items-center justify-center font-bold text-xs">
+                  {selectedContact.sender_name?.charAt(0)}
                 </div>
-                <div className="flex justify-start">
-                  <div className="bg-white rounded-lg rounded-tl-none px-4 py-3 max-w-[80%] shadow-sm border border-gray-200">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold text-whatsapp-light">AI Agent</span>
-                      <span
-                        className="text-xs text-white px-1.5 py-0.5 rounded"
-                        style={{ backgroundColor: PRIORITY_COLORS[selectedMsg.priority] }}
-                      >
-                        {selectedMsg.priority}
-                      </span>
+                <div>
+                  <h2 className="text-sm font-semibold">{selectedContact.sender_name}</h2>
+                  <p className="text-xs text-gray-500">{selectedContact.sender_phone}</p>
+                </div>
+              </div>
+              
+              <div className="flex-1 p-4 bg-whatsapp-chat overflow-y-auto space-y-4">
+                {thread.map(t => (
+                  <div key={t.id} className="space-y-3">
+                    {/* User Message */}
+                    <div className="flex justify-end">
+                      <div className="bg-whatsapp-user rounded-lg rounded-tr-none px-4 py-2 max-w-[85%] shadow-sm">
+                        <p className="text-sm text-gray-700">{t.content}</p>
+                        <p className="text-[10px] text-gray-500 mt-1 text-right">
+                          {new Date(t.created_at).toLocaleTimeString()}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-700">{selectedMsg.ai_reply}</p>
+                    {/* AI Reply */}
+                    <div className="flex justify-start">
+                      <div className="bg-white rounded-lg rounded-tl-none px-4 py-2 max-w-[85%] shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold text-whatsapp-light">AI Agent</span>
+                          <span 
+                            className="text-[10px] text-white px-1.5 py-0.5 rounded"
+                            style={{ backgroundColor: PRIORITY_COLORS[t.priority] }}
+                          >
+                            {t.priority}
+                          </span>
+                          {t.status === 'replied' && (t.priority === 'URGENT' || t.priority === 'HIGH') && (
+                            <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">
+                              Auto-Replied
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700">{t.ai_reply}</p>
+                        
+                        {t.status === 'pending' && (
+                          <div className="flex gap-2 mt-2">
+                            <button 
+                              onClick={() => handleApprove(t.id, true)}
+                              className="flex-1 bg-green-500 hover:bg-green-600 text-white py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                            >
+                              <CheckCircle size={12} /> Approve
+                            </button>
+                            <button 
+                              onClick={() => handleApprove(t.id, false)}
+                              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                            >
+                              <XCircle size={12} /> Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-              <div className="p-4 border-t border-gray-200 flex gap-3">
-                <button
-                  onClick={() => handleApprove(selectedMsg.id, true)}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <CheckCircle size={16} /> Approve & Send
-                </button>
-                <button
-                  onClick={() => handleApprove(selectedMsg.id, false)}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <XCircle size={16} /> Reject
-                </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-400 h-[600px] flex items-center justify-center">
+              <div>
+                <MessageCircle size={48} className="mx-auto mb-3 text-gray-300" />
+                <p>Select a contact to view conversation</p>
               </div>
             </div>
           )}

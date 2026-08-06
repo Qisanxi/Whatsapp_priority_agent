@@ -9,12 +9,12 @@ from services.agent import classify_priority, generate_reply
 
 router = APIRouter(prefix="/api")
 
+# ─── WEBHOOK ───
 @router.post("/webhook/message")
 def receive_message(msg: IncomingMessage, db: Session = Depends(get_db)):
     priority = classify_priority(msg.content)
     ai_reply = generate_reply(msg.content, priority)
     
-    # Auto-reply for URGENT and HIGH — no human needed
     auto_reply = priority in ["URGENT", "HIGH"]
     
     db_msg = Message(
@@ -29,7 +29,6 @@ def receive_message(msg: IncomingMessage, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_msg)
     
-    # Save conversation
     db.add(Conversation(message_id=db_msg.id, role="user", content=msg.content))
     db.add(Conversation(message_id=db_msg.id, role="assistant", content=ai_reply))
     db.commit()
@@ -42,26 +41,47 @@ def receive_message(msg: IncomingMessage, db: Session = Depends(get_db)):
         "auto_replied": auto_reply
     }
 
-@router.get("/messages")
-def list_messages(priority: str = None, status: str = None, db: Session = Depends(get_db)):
-    query = db.query(Message)
-    if priority:
-        query = query.filter(Message.priority == priority.upper())
-    if status:
-        query = query.filter(Message.status == status)
-    results = query.order_by(Message.created_at.desc()).all()
+# ─── INBOX (Grouped by Phone) ───
+@router.get("/inbox")
+def inbox(db: Session = Depends(get_db)):
+    subquery = db.query(
+        Message.sender_phone,
+        func.max(Message.created_at).label('latest_time')
+    ).group_by(Message.sender_phone).subquery()
+    
+    results = db.query(Message).join(
+        subquery,
+        (Message.sender_phone == subquery.c.sender_phone) & 
+        (Message.created_at == subquery.c.latest_time)
+    ).order_by(Message.created_at.desc()).all()
+    
     return [{
-        "id": r.id,
         "sender_phone": r.sender_phone,
         "sender_name": r.sender_name,
+        "last_message": r.content,
+        "last_priority": r.priority,
+        "last_status": r.status,
+        "unread_count": db.query(Message).filter(
+            Message.sender_phone == r.sender_phone,
+            Message.status == "pending"
+        ).count(),
+        "updated_at": r.created_at.isoformat()
+    } for r in results]
+
+# ─── CONVERSATION THREAD (All messages for one phone) ───
+@router.get("/conversations/{phone}")
+def get_conversation_by_phone(phone: str, db: Session = Depends(get_db)):
+    results = db.query(Message).filter(Message.sender_phone == phone).order_by(Message.created_at.asc()).all()
+    return [{
+        "id": r.id,
         "content": r.content,
         "priority": r.priority,
         "status": r.status,
         "ai_reply": r.ai_reply,
-        "created_at": r.created_at.isoformat() if r.created_at else None,
-        "replied_at": r.replied_at.isoformat() if r.replied_at else None
+        "created_at": r.created_at.isoformat()
     } for r in results]
 
+# ─── APPROVE / REJECT ───
 @router.post("/messages/{msg_id}/approve")
 def approve_message(msg_id: int, req: ApproveRequest, db: Session = Depends(get_db)):
     msg = db.query(Message).filter(Message.id == msg_id).first()
@@ -79,17 +99,7 @@ def approve_message(msg_id: int, req: ApproveRequest, db: Session = Depends(get_
     db.commit()
     return {"status": "success", "message_id": msg_id, "new_status": msg.status}
 
-@router.get("/messages/{msg_id}/conversation")
-def get_conversation(msg_id: int, db: Session = Depends(get_db)):
-    results = db.query(Conversation).filter(Conversation.message_id == msg_id).order_by(Conversation.created_at).all()
-    return [{
-        "id": r.id,
-        "message_id": r.message_id,
-        "role": r.role,
-        "content": r.content,
-        "created_at": r.created_at.isoformat() if r.created_at else None
-    } for r in results]
-
+# ─── DASHBOARD STATS ───
 @router.get("/dashboard/stats")
 def dashboard_stats(db: Session = Depends(get_db)):
     total = db.query(Message).count()
