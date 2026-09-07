@@ -310,7 +310,13 @@ whatsapp-priority-agent/
 │   ├── src/
 │   │   ├── App.jsx
 │   │   ├── main.jsx
-│   │   └── index.css
+│   │   ├── index.css
+│   │   ├── pages/
+│   │   │   ├── LandingPage.jsx
+│   │   │   ├── PipelineDemo.jsx
+│   │   │   └── Dashboard.jsx
+│   │   └── data/
+│   │       └── landingData.js
 │   ├── index.html
 │   ├── package.json
 │   └── vite.config.js
@@ -320,8 +326,6 @@ whatsapp-priority-agent/
 │   ├── DEPLOYMENT.md
 │   └── architecture.png
 │
-├── landing.html
-│
 └── README.md
 ```
 
@@ -329,7 +333,13 @@ whatsapp-priority-agent/
 
 # 🎨 Landing Page
 
-A standalone product landing page for the project lives in [`landing.html`](./landing.html) — a self-contained HTML file (no build step required). Open it directly in a browser, or serve it statically (e.g. `python -m http.server`) to showcase the project.
+The app ships with a built-in marketing landing page — a Tailwind CSS rewrite of the original design, fully integrated into the React frontend:
+
+- **`/`** — landing page: hero, live triage simulation, priority rules, system architecture, quickstart terminal, capabilities
+- Clicking **Get started** (or **Launch app**) routes you to **`/app`** — the live simulation dashboard
+- The dashboard header has an **← About** button to return to the landing page
+
+Routing is handled by `react-router-dom`, so deep links like `/app` survive a page refresh (the FastAPI catch-all serves `index.html` for any path in production).
 
 ---
 
