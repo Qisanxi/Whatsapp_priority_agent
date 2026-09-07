@@ -27,7 +27,7 @@ Critical issues receive AI-generated responses within seconds, while non-urgent 
 The system is organized into four tiers. On the client side, inbound WhatsApp traffic enters through the webhook while admins work in the React dashboard. The FastAPI backend hosts both the webhook endpoint and the agent services (priority classification + reply generation), calling a dedicated vLLM instance running **Qwen2.5-7B-Instruct** on an **AMD Radeon GPU (ROCm)** through an OpenAI-compatible API. PostgreSQL persists every message together with its conversation history, which provides the multi-turn memory used for context.
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontSize":"14px","primaryTextColor":"#1E293B","lineColor":"#94A3B8","clusterBkg":"#F8FAFC","clusterBorder":"#E2E8F0"},"flowchart":{"curve":"basis","padding":32,"nodeSpacing":80,"rankSpacing":80,"htmlLabels":true}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontSize":"18px","primaryTextColor":"#1E293B","lineColor":"#94A3B8","clusterBkg":"#F8FAFC","clusterBorder":"#E2E8F0"},"flowchart":{"curve":"basis","padding":32,"nodeSpacing":80,"rankSpacing":80,"htmlLabels":true,"wrappingWidth":280}}}%%
 flowchart LR
     subgraph CLIENTS["Clients"]
         direction TB
@@ -78,7 +78,7 @@ flowchart LR
 Every inbound message follows the same pipeline: the webhook triggers a low-temperature LLM call to classify priority, a tone-matched reply is generated, and the message is routed based on its label. **URGENT** and **HIGH** messages are answered instantly by the AI, while **NORMAL** and **LOW** messages are held in the approval queue until an admin approves, edits, or rejects the draft. Every outcome — sent, rejected, or pending — is written to PostgreSQL so the conversation history stays complete.
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontSize":"14px","primaryTextColor":"#1E293B","lineColor":"#94A3B8"},"flowchart":{"curve":"basis","padding":32,"nodeSpacing":80,"rankSpacing":80,"htmlLabels":true}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontSize":"18px","primaryTextColor":"#1E293B","lineColor":"#94A3B8"},"flowchart":{"curve":"basis","padding":32,"nodeSpacing":80,"rankSpacing":80,"htmlLabels":true,"wrappingWidth":280}}}%%
 flowchart TD
     A["Inbound WhatsApp message<br/>POST /api/webhook/message"] --> B["classify_priority()<br/>LLM call · temperature 0.1"]
     B --> D["generate_reply()<br/>priority-aware tone prompt"]
