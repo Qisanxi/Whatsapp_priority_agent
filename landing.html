@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Priority Agent — Private AI Triage on AMD ROCm</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect x='1' y='2' width='18' height='3' fill='%23FF5C5C'/%3E%3Crect x='1' y='7' width='13' height='3' fill='%23FFB224'/%3E%3Crect x='1' y='12' width='8' height='3' fill='%2334D877'/%3E%3Crect x='1' y='17' width='4' height='2' fill='%238FA39A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root{
+    --bg:#0A0E0C; --panel:#0E1512; --panel2:#101814;
+    --line:rgba(214,232,222,.09); --line2:rgba(214,232,222,.18);
+    --text:#E9F2EC; --body:#C6D3CA; --sub:#9FB2A6; --mut:#7E9187;
+    --green:#34D877; --greenD:#0E2A1D;
+    --red:#FF5C5C; --amber:#FFB224; --grayT:#8FA39A; --amd:#FF4A3D;
+    --mono:'JetBrains Mono',monospace; --sans:'Archivo',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:84px}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(rgba(214,232,222,.045) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  ::selection{background:var(--green);color:#06130B}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#1E2A24;border-radius:6px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer;background:none;border:none;color:inherit}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 32px;position:relative;z-index:1}
+  .mono{font-family:var(--mono)}
+  i[data-lucide],svg.lucide{width:15px;height:15px;stroke-width:2}
+
+  /* ---------- nav ---------- */
+  nav{position:fixed;top:0;left:0;right:0;z-index:50;border-bottom:1px solid var(--line);
+    background:rgba(10,14,12,.82);backdrop-filter:blur(12px)}
+  .nav-in{max-width:1200px;margin:0 auto;padding:0 32px;height:62px;display:flex;align-items:center;gap:28px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:12px;
+    letter-spacing:.14em;font-weight:700}
+  .brand small{color:var(--mut);font-weight:400;letter-spacing:.1em}
+  .nav-links{display:flex;gap:26px;margin-left:auto}
+  .nav-links a{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--sub);
+    text-transform:uppercase;transition:color .2s}
+  .nav-links a:hover{color:var(--green)}
+  .gh-btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;border:1px solid var(--line2);padding:8px 14px;border-radius:6px;
+    color:var(--text);transition:.2s}
+  .gh-btn:hover{border-color:var(--green);color:var(--green)}
+
+  /* ---------- hero ---------- */
+  .hero{padding:148px 0 0;position:relative}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--green);
+    display:flex;align-items:center;gap:12px;margin-bottom:30px;text-transform:uppercase}
+  .eyebrow::before{content:"";width:34px;height:1px;background:var(--green)}
+  .hl{font-size:clamp(38px,5.8vw,68px);font-weight:800;font-stretch:112%;
+    line-height:1.02;letter-spacing:-.02em}
+  .hl .l{display:block;overflow:hidden}
+  .hl .li{display:inline-block;transform:translateY(112%);animation:rise .9s cubic-bezier(.2,.75,.2,1) forwards}
+  .hl .l:nth-child(1) .li{animation-delay:.05s}
+  @keyframes rise{to{transform:translateY(0)}}
+  .hl em{font-style:normal}
+  .c-grn{color:var(--green)}
+  .tagline{max-width:640px;color:var(--body);font-size:17px;margin:24px 0 34px;
+    opacity:0;animation:fade 1s .45s forwards}
+  @keyframes fade{to{opacity:1}}
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap;opacity:0;animation:fade 1s .6s forwards}
+  .btn{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:14px;
+    padding:13px 22px;border-radius:7px;transition:.2s;letter-spacing:.01em}
+  .btn-solid{background:var(--green);color:#06130B}
+  .btn-solid:hover{background:#4BE78B;transform:translateY(-1px)}
+  .btn-ghost{border:1px solid var(--line2);color:var(--text)}
+  .btn-ghost:hover{border-color:var(--green);color:var(--green)}
+  .hero-stats{display:flex;gap:0;margin-top:52px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    flex-wrap:wrap;opacity:0;animation:fade 1s .75s forwards}
+  .hstat{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--sub);
+    padding:16px 28px 16px 0;margin-right:28px;text-transform:uppercase}
+  .hstat b{color:var(--text);font-weight:700;margin-right:8px}
+
+  /* spectrum */
+  .spectrum-box{margin:60px 0 0;opacity:0;animation:fade 1s .85s forwards}
+  .spec-cap{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;
+    letter-spacing:.2em;color:var(--mut);text-transform:uppercase;margin-bottom:10px}
+  .spectrum{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line)}
+  .spec-seg{background:var(--bg);padding:14px 16px 13px;position:relative;overflow:hidden}
+  .spec-seg i{display:block;height:3px;width:26px;background:var(--pc);margin-bottom:11px}
+  .spec-seg b{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--pc);display:block}
+  .spec-seg span{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--mut);display:block;margin-top:3px}
+  .playhead{position:absolute;top:0;bottom:0;width:1px;background:rgba(233,242,236,.85);
+    animation:sweep 9s ease-in-out infinite alternate;z-index:2}
+  .playhead::after{content:"";position:absolute;top:0;left:-3px;border-left:3.5px solid transparent;
+    border-right:3.5px solid transparent;border-top:5px solid rgba(233,242,236,.85)}
+  @keyframes sweep{0%{left:1%}100%{left:99%}}
+
+  /* ---------- marquee ---------- */
+  .ticker{margin-top:76px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    overflow:hidden;white-space:nowrap;padding:13px 0}
+  .ticker-in{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.22em;
+    color:var(--mut);text-transform:uppercase;animation:tick 40s linear infinite}
+  .ticker:hover .ticker-in{animation-play-state:paused}
+  .ticker-in b{color:var(--green);font-weight:500;margin:0 6px}
+  @keyframes tick{to{transform:translateX(-50%)}}
+
+  /* ---------- sections ---------- */
+  section{border-top:1px solid var(--line);padding:104px 0 112px;position:relative;z-index:1}
+  .shead{display:grid;grid-template-columns:120px 1fr;gap:24px;margin-bottom:56px;align-items:start}
+  .idx{font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:var(--green);padding-top:14px}
+  .idx::before{content:"";display:block;width:22px;height:1px;background:var(--green);margin-bottom:12px}
+  h2{font-size:clamp(32px,4.4vw,56px);font-weight:750;font-stretch:110%;letter-spacing:-.02em;line-height:1.04}
+  .lead{color:var(--body);max-width:620px;margin-top:16px;font-size:16.5px}
+
+  /* ---------- pipeline ---------- */
+  .pipe-ctl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+  .chip-btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line2);padding:9px 15px;
+    border-radius:6px;color:var(--text);transition:.2s}
+  .chip-btn:hover{border-color:var(--green);color:var(--green)}
+  .chip-btn.danger:hover{border-color:var(--red);color:var(--red)}
+  .pipe-stats{display:flex;gap:1px;background:var(--line);border:1px solid var(--line);margin-left:auto}
+  .pstat{background:var(--panel);padding:9px 18px;text-align:right}
+  .pstat b{display:block;font-family:var(--mono);font-size:16px;font-weight:700;color:var(--green);line-height:1.1}
+  .pstat span{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
+  .pipe{display:grid;grid-template-columns:300px 1fr 300px;gap:1px;background:var(--line);
+    border:1px solid var(--line)}
+  .cell{background:var(--panel);display:flex;flex-direction:column;min-height:540px}
+  .cell-h{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:13px 16px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--sub);text-transform:uppercase;flex-shrink:0}
+  .cell-h .r{color:var(--mut)}
+  .live{display:inline-flex;align-items:center;gap:7px;color:var(--green)}
+  .live .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite}
+  .live.paused{color:var(--amber)} .live.paused .dot{background:var(--amber);animation:none}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .cell-b{flex:1;padding:14px 16px;overflow:hidden;display:flex;flex-direction:column}
+
+  /* inbound */
+  .msg{background:var(--panel2);border:1px solid var(--line);border-left:2px solid var(--line2);
+    border-radius:8px;padding:11px 13px;margin-bottom:10px;animation:msgIn .45s cubic-bezier(.2,.8,.3,1)}
+  @keyframes msgIn{from{opacity:0;transform:translateX(-14px)}}
+  .msg-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:9px;font-weight:700;color:#08110C;flex-shrink:0}
+  .msg-name{font-family:var(--mono);font-size:11px;color:var(--text);font-weight:500}
+  .msg-time{font-family:var(--mono);font-size:10px;color:var(--mut);margin-left:auto}
+  .msg-text{font-size:13px;color:var(--body);line-height:1.45}
+
+  /* agent */
+  .alog{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;min-height:0}
+  .log-line{font-family:var(--mono);font-size:11.5px;line-height:1.9;color:var(--sub);
+    animation:msgIn .3s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .log-line .k{color:var(--mut)} .log-line .v{color:var(--text)}
+  .log-line .ok{color:var(--green)} .log-line .warn{color:var(--amber)} .log-line .bad{color:var(--red)}
+  .agent-now{flex-shrink:0;border-top:1px solid var(--line);padding-top:14px;margin-top:12px}
+  .stamp{display:inline-flex;align-items:baseline;gap:10px;font-family:var(--mono);font-weight:700;
+    font-size:15px;letter-spacing:.16em;padding:8px 15px;border:1px solid;border-radius:5px;
+    opacity:0;transform:scale(1.5) rotate(-3deg)}
+  .stamp.on{animation:stampIn .32s cubic-bezier(.2,1.4,.4,1) forwards}
+  @keyframes stampIn{to{opacity:1;transform:scale(1) rotate(0)}}
+  .stamp small{font-size:10px;font-weight:400;letter-spacing:.08em;opacity:.75}
+  .stamp.p-URGENT{color:var(--red);border-color:var(--red);background:rgba(255,92,92,.08)}
+  .stamp.p-HIGH{color:var(--amber);border-color:var(--amber);background:rgba(255,178,36,.08)}
+  .stamp.p-NORMAL{color:var(--green);border-color:var(--green);background:rgba(52,216,119,.08)}
+  .stamp.p-LOW{color:var(--grayT);border-color:var(--grayT);background:rgba(143,163,154,.08)}
+  .draft{margin-top:13px;background:var(--greenD);border:1px solid rgba(52,216,119,.25);
+    border-radius:8px;padding:11px 13px;font-size:13px;color:#D8ECDE;line-height:1.5;min-height:44px}
+  .draft .caret{display:inline-block;width:7px;height:14px;background:var(--green);
+    vertical-align:-2px;animation:blink .8s infinite;margin-left:2px}
+  .draft-lab{font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--green);
+    text-transform:uppercase;margin-top:12px;display:flex;align-items:center;gap:7px}
+
+  /* lanes */
+  .lane-col{display:grid;grid-template-rows:1fr 1.25fr;gap:1px;background:var(--line)}
+  .lane{background:var(--panel);display:flex;flex-direction:column;min-height:0}
+  .lane-b{flex:1;overflow-y:auto;padding:12px 14px;max-height:230px}
+  .sent-row{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;
+    color:var(--sub);padding:8px 2px;border-bottom:1px dashed var(--line);animation:msgIn .35s}
+  .sent-row .ck{color:var(--green);display:flex}
+  .sent-row b{color:var(--text);font-weight:500}
+  .sent-row .pt{margin-left:auto;font-size:10px}
+  .q-item{border:1px solid var(--line);border-radius:8px;padding:11px 12px;margin-bottom:9px;
+    background:var(--panel2);animation:msgIn .35s;transition:.4s}
+  .q-item.done{opacity:.5;border-color:rgba(52,216,119,.35)}
+  .q-item.rej{opacity:.35;filter:saturate(.3)}
+  .q-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .q-name{font-family:var(--mono);font-size:11px;font-weight:500}
+  .q-pr{font-family:var(--mono);font-size:9px;letter-spacing:.12em;padding:2px 7px;border-radius:3px}
+  .q-pr.NORMAL{color:var(--green);background:rgba(52,216,119,.1)}
+  .q-pr.LOW{color:var(--grayT);background:rgba(143,163,154,.1)}
+  .q-draft{font-size:12px;color:var(--body);line-height:1.45;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:9px}
+  .q-acts{display:flex;gap:7px}
+  .q-btn{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    padding:5px 11px;border-radius:4px;border:1px solid var(--line2);color:var(--sub);
+    display:inline-flex;align-items:center;gap:6px;transition:.2s}
+  .q-btn.ap:hover{border-color:var(--green);color:var(--green)}
+  .q-btn.rj:hover{border-color:var(--red);color:var(--red)}
+  .q-state{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--green);
+    display:flex;align-items:center;gap:7px}
+
+  /* ---------- rules ---------- */
+  .rules-grid{display:grid;grid-template-columns:1fr 1.5fr;gap:64px;align-items:start}
+  .rules-sticky{position:sticky;top:110px}
+  .tier{display:grid;grid-template-columns:56px 1fr;gap:20px;padding:30px 0;
+    border-top:1px solid var(--line);transition:background .25s;position:relative}
+  .tier:last-child{border-bottom:1px solid var(--line)}
+  .tier::before{content:"";position:absolute;left:0;top:-1px;bottom:-1px;width:2px;background:var(--tc);
+    transform:scaleY(0);transform-origin:top;transition:transform .3s}
+  .tier:hover::before{transform:scaleY(1)}
+  .tier:hover{background:rgba(214,232,222,.02)}
+  .tier-num{font-family:var(--mono);font-size:12px;color:var(--mut);padding-top:6px}
+  .tier-name{font-size:24px;font-weight:750;font-stretch:110%;letter-spacing:-.01em;color:var(--tc);
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .sla{font-family:var(--mono);font-size:9px;letter-spacing:.16em;padding:4px 9px;border-radius:3px;
+    border:1px solid var(--line2);color:var(--sub);font-weight:400;display:inline-flex;align-items:center;gap:6px}
+  .sla i{width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block}
+  .sla.instant{color:var(--green);border-color:rgba(52,216,119,.4)}
+  .sla.instant i{animation:blink 1.2s infinite}
+  .tier-act{color:var(--body);font-size:14.5px;margin:9px 0 13px}
+  .tier-q{font-family:var(--mono);font-size:12px;color:var(--sub);background:var(--panel);
+    border:1px solid var(--line);border-radius:7px;padding:10px 14px;display:inline-block}
+  .tier-q::before{content:"“";color:var(--tc)} .tier-q::after{content:"”";color:var(--tc)}
+
+  /* ---------- architecture ---------- */
+  .diag-wrap{border:1px solid var(--line);background:var(--panel);padding:26px 18px;overflow-x:auto}
+  .diag-wrap svg{min-width:940px;width:100%;display:block}
+  .nd{fill:var(--panel2);stroke:var(--line2);stroke-width:1}
+  .ndRed{stroke:rgba(255,74,61,.55)} .ndGrn{stroke:rgba(52,216,119,.4)}
+  .nt{font-family:var(--mono);font-size:13px;font-weight:700;fill:var(--text)}
+  .ns{font-family:var(--mono);font-size:9.5px;fill:var(--mut)}
+  .nsRed{fill:var(--amd)} .nsGrn{fill:var(--green)}
+  .st{font-family:var(--mono);font-size:10.5px;fill:var(--body)}
+  .stp{fill:rgba(214,232,222,.03);stroke:var(--line)}
+  .el{font-family:var(--mono);font-size:9px;fill:var(--mut);letter-spacing:.08em}
+  .edge{stroke:#4A5C52;stroke-width:1;fill:none}
+  .edgeG{stroke:rgba(52,216,119,.5);stroke-width:1;fill:none}
+  .edgeR{stroke:rgba(255,74,61,.6);stroke-width:1;fill:none;stroke-dasharray:4 3}
+  .stack-ledger{margin-top:1px;border:1px solid var(--line);border-top:none}
+  .sl-row{display:grid;grid-template-columns:150px 1fr 1fr;gap:20px;padding:17px 22px;
+    border-bottom:1px solid var(--line);align-items:baseline;transition:background .2s}
+  .sl-row:last-child{border-bottom:none}
+  .sl-row:hover{background:rgba(214,232,222,.02)}
+  .sl-row b{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--green);text-transform:uppercase}
+  .sl-row .tech{font-family:var(--mono);font-size:13px;color:var(--text)}
+  .sl-row .role{font-size:13.5px;color:var(--sub)}
+
+  /* ---------- quickstart ---------- */
+  .qs-grid{display:grid;grid-template-columns:340px 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line)}
+  .qs-steps{background:var(--panel);display:flex;flex-direction:column}
+  .qs-step{display:grid;grid-template-columns:52px 1fr;gap:14px;text-align:left;padding:24px 24px;
+    border-bottom:1px solid var(--line);transition:.2s;flex:1;align-items:start}
+  .qs-step:last-child{border-bottom:none}
+  .qs-step .n{font-family:var(--mono);font-size:12px;color:var(--mut);padding-top:3px}
+  .qs-step .t{font-weight:650;font-size:16px;letter-spacing:-.01em}
+  .qs-step .d{font-family:var(--mono);font-size:11px;color:var(--mut);margin-top:4px;line-height:1.6}
+  .qs-step.active{background:var(--panel2)}
+  .qs-step.active .n,.qs-step.active .t{color:var(--green)}
+  .qs-step:hover{background:var(--panel2)}
+  .term{background:#080B0A;display:flex;flex-direction:column;min-height:430px}
+  .term-h{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
+  .term-title{font-family:var(--mono);font-size:11px;color:var(--sub);letter-spacing:.08em}
+  .copy-btn{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
+    font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);
+    border:1px solid var(--line2);padding:6px 11px;border-radius:5px;transition:.2s}
+  .copy-btn:hover{color:var(--green);border-color:var(--green)}
+  .term-b{flex:1;padding:20px 22px;font-family:var(--mono);font-size:12.5px;line-height:2.05;counter-reset:ln;overflow-x:auto}
+  .tl{white-space:pre;display:block;counter-increment:ln}
+  .tl::before{content:counter(ln,decimal-leading-zero);color:#31413A;margin-right:18px}
+  .tl .c{color:#5E7A6C} .tl .x{color:var(--text)} .tl .o{color:var(--green)}
+
+  /* ---------- capabilities ---------- */
+  .cap-row{display:grid;grid-template-columns:90px 1.1fr 1.6fr 50px;gap:24px;align-items:center;
+    padding:24px 0;border-bottom:1px solid var(--line);transition:background .2s}
+  .cap-row:first-of-type{border-top:1px solid var(--line)}
+  .cap-row:hover{background:rgba(214,232,222,.02)}
+  .cap-id{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.14em}
+  .cap-name{font-weight:680;font-size:17px;letter-spacing:-.01em}
+  .cap-desc{color:var(--sub);font-size:14px;line-height:1.55}
+  .cap-ck{width:30px;height:30px;border:1px solid rgba(52,216,119,.4);border-radius:6px;
+    display:flex;align-items:center;justify-content:center;color:var(--green)}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line);padding:100px 0 0;position:relative;z-index:1}
+  .close-line{font-size:clamp(30px,4.6vw,60px);font-weight:780;font-stretch:110%;
+    letter-spacing:-.02em;line-height:1.05;max-width:820px}
+  .close-line em{font-style:normal;color:var(--green)}
+  .foot-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:48px;margin-top:64px;padding-bottom:64px}
+  .f-lab{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--mut);
+    text-transform:uppercase;margin-bottom:16px}
+  .team-name{font-size:21px;font-weight:700}
+  .team-role{color:var(--sub);font-size:14px;margin-top:4px}
+  .demo-slot{border:1px dashed var(--line2);border-radius:10px;padding:24px;display:flex;
+    align-items:center;gap:18px;cursor:pointer;transition:.25s;margin-top:6px}
+  .demo-slot:hover{border-color:var(--green);background:rgba(52,216,119,.04)}
+  .play-c{width:46px;height:46px;border-radius:50%;border:1px solid var(--line2);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;color:var(--green)}
+  .demo-slot b{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.14em}
+  .demo-slot span{font-family:var(--mono);font-size:11px;color:var(--mut)}
+  .f-links a,.f-links button{display:flex;align-items:center;gap:10px;font-family:var(--mono);
+    font-size:12px;color:var(--sub);padding:7px 0;transition:.2s;letter-spacing:.04em}
+  .f-links a:hover,.f-links button:hover{color:var(--green)}
+  .amd-note{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;
+    color:var(--sub);letter-spacing:.1em;margin-top:22px}
+  .amd-note i{width:7px;height:7px;border-radius:50%;background:var(--amd);display:inline-block}
+  .foot-bar{border-top:1px solid var(--line);padding:22px 0;display:flex;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+    color:var(--mut);text-transform:uppercase}
+
+  /* toast */
+  #toasts{position:fixed;bottom:24px;right:24px;z-index:99;display:flex;flex-direction:column;gap:9px}
+  .toast{background:#101813;border:1px solid var(--line2);border-left:2px solid var(--green);
+    padding:12px 16px;border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--text);
+    display:flex;align-items:center;gap:10px;animation:msgIn .3s;max-width:340px}
+  .toast.red{border-left-color:var(--red)} .toast.amber{border-left-color:var(--amber)}
+
+  .rv{opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s cubic-bezier(.2,.7,.2,1)}
+  .rv.in{opacity:1;transform:none}
+
+  @media(max-width:1020px){
+    .pipe{grid-template-columns:1fr 1fr}
+    .cell.inb{grid-column:1/-1;min-height:0}
+    .pipe-stats{margin-left:0;width:100%;justify-content:space-between}
+    .rules-grid{grid-template-columns:1fr;gap:40px}
+    .rules-sticky{position:static}
+    .qs-grid{grid-template-columns:1fr}
+    .qs-steps{flex-direction:row;overflow-x:auto}
+    .qs-step{min-width:210px;border-bottom:none;border-right:1px solid var(--line)}
+  }
+  @media(max-width:860px){.nav-links{display:none}}
+  @media(max-width:720px){
+    .pipe{grid-template-columns:1fr}
+    .lane-col{grid-template-rows:none}
+    .cell{min-height:0}.cell-b{max-height:300px}
+    .shead{grid-template-columns:1fr;gap:10px}
+    .foot-grid{grid-template-columns:1fr;gap:36px}
+    .cap-row{grid-template-columns:1fr;gap:8px;padding:20px 0}
+    .sl-row{grid-template-columns:1fr;gap:6px}
+    .spec-seg span{display:none}
+    .wrap{padding:0 20px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .playhead,.ticker-in,.hl .li,.live .dot,.sla.instant i{animation:none!important}
+    .hl .li{transform:none}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <a class="brand" href="#top">
+      <svg width="18" height="18" viewBox="0 0 20 20"><rect x="1" y="2" width="18" height="3" fill="#FF5C5C"/><rect x="1" y="7" width="13" height="3" fill="#FFB224"/><rect x="1" y="12" width="8" height="3" fill="#34D877"/><rect x="1" y="17" width="4" height="2" fill="#8FA39A"/></svg>
+      PRIORITY&nbsp;AGENT <small>/ v1.0</small>
+    </a>
+    <div class="nav-links">
+      <a href="#pipeline">Pipeline</a><a href="#rules">Rules</a><a href="#system">System</a>
+      <a href="#quickstart">Quickstart</a><a href="#capabilities">Capabilities</a>
+    </div>
+    <a class="gh-btn" href="https://github.com/YOUR_USERNAME/whatsapp-priority-agent" target="_blank" rel="noopener">
+      <i data-lucide="github"></i>GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <p class="eyebrow">Track 2 · Private AI Agents — AMD AI DevMaster Hackathon 2026</p>
+    <h1 class="hl">
+      <span class="l"><span class="li">WhatsApp <em class="c-grn">Priority</em> Agent</span></span>
+    </h1>
+    <p class="tagline">AI triage for WhatsApp Business — urgent messages get instant LLM replies, everything else waits for human approval. Private inference on AMD Radeon Cloud (ROCm).</p>
+    <div class="hero-cta">
+      <a class="btn btn-solid" href="#quickstart"><i data-lucide="rocket"></i>Get started</a>
+      <a class="btn btn-ghost" href="#pipeline"><i data-lucide="activity"></i>Watch it triage</a>
+      <a class="btn btn-ghost" href="https://github.com/YOUR_USERNAME/whatsapp-priority-agent" target="_blank" rel="noopener"><i data-lucide="github"></i>View on GitHub</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><b>4</b>priority tiers</div>
+      <div class="hstat"><b>&lt;2s</b>median auto-reply</div>
+      <div class="hstat"><b>100%</b>local inference</div>
+      <div class="hstat"><b>ROCm</b>accelerated</div>
+    </div>
+
+    <div class="spectrum-box">
+      <div class="spec-cap"><span>Triage matrix</span><span>Classifier scan — live loop</span></div>
+      <div class="spectrum">
+        <div class="playhead"></div>
+        <div class="spec-seg" style="--pc:var(--red)"><i></i><b>URGENT</b><span>auto-reply · 0s wait</span></div>
+        <div class="spec-seg" style="--pc:var(--amber)"><i></i><b>HIGH</b><span>auto-reply · &lt;2s</span></div>
+        <div class="spec-seg" style="--pc:var(--green)"><i></i><b>NORMAL</b><span>human approval</span></div>
+        <div class="spec-seg" style="--pc:var(--grayT)"><i></i><b>LOW</b><span>human approval</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticker">
+    <div class="ticker-in" id="ticker"></div>
+  </div>
+</header>
+
+<!-- ================= 01 PIPELINE ================= -->
+<section id="pipeline">
+  <div class="wrap">
+    <div class="shead rv">
+      <span class="idx">01 / LIVE</span>
+      <div>
+        <h2>Watch the agent think.</h2>
+        <p class="lead">A faithful simulation of the production loop — webhook in, priority stamp, streamed reply, route decision. Hit <b>inject</b> to fire an urgent ticket at it, or pause the loop entirely.</p>
+      </div>
+    </div>
+
+    <div class="pipe-ctl rv">
+      <button class="chip-btn" id="btnPause"><i data-lucide="pause"></i>Pause loop</button>
+      <button class="chip-btn danger" id="btnInject"><i data-lucide="zap"></i>Inject urgent message</button>
+      <div class="pipe-stats">
+        <div class="pstat"><b id="stProc">0</b><span>processed</span></div>
+        <div class="pstat"><b id="stAuto">0</b><span>auto-replied</span></div>
+        <div class="pstat"><b id="stQ">0</b><span>queued</span></div>
+        <div class="pstat"><b id="stLat">—</b><span>avg latency</span></div>
+      </div>
+    </div>
+
+    <div class="pipe rv">
+      <!-- inbound -->
+      <div class="cell inb">
+        <div class="cell-h"><span>Inbound — WhatsApp webhook</span><span class="r">live feed</span></div>
+        <div class="cell-b" id="feed"></div>
+      </div>
+      <!-- agent -->
+      <div class="cell">
+        <div class="cell-h"><span>Agent core — vLLM · ROCm</span>
+          <span class="live" id="liveTag"><i class="dot"></i>LIVE</span></div>
+        <div class="cell-b">
+          <div class="alog" id="alog"></div>
+          <div class="agent-now">
+            <div id="stampWrap"><span class="stamp" id="stamp"></span></div>
+            <div class="draft-lab" id="draftLab" style="display:none"><i data-lucide="sparkles"></i>Generating contextual reply</div>
+            <div class="draft" id="draft"></div>
+          </div>
+        </div>
+      </div>
+      <!-- lanes -->
+      <div class="lane-col">
+        <div class="lane">
+          <div class="cell-h"><span>Sent by agent</span><span class="r" id="sentCount">0</span></div>
+          <div class="lane-b" id="sentLog"></div>
+        </div>
+        <div class="lane">
+          <div class="cell-h"><span>Human approval queue</span><span class="r" id="qCount">0</span></div>
+          <div class="lane-b" id="queue"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 02 RULES ================= -->
+<section id="rules">
+  <div class="wrap">
+    <div class="rules-grid">
+      <div class="rules-sticky rv">
+        <span class="idx">02 / RULES</span>
+        <h2>Four tiers.<br>Two speeds.</h2>
+        <p class="lead">Every inbound message lands in one of four priority classes. Two of them never touch a human queue. Two of them never skip one. That single rule is the whole product — the LLM just enforces it, every second of every day.</p>
+        <p class="lead" style="margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--mut)">classify → generate → store → route</p>
+      </div>
+      <div class="rv">
+        <div class="tier" style="--tc:var(--red)">
+          <span class="tier-num">T-01</span>
+          <div>
+            <div class="tier-name">Urgent <span class="sla instant"><i></i>INSTANT</span></div>
+            <p class="tier-act">Auto-replied the moment it's classified. The customer never sees a wait.</p>
+            <span class="tier-q">Server down, we're losing money every minute!</span>
+          </div>
+        </div>
+        <div class="tier" style="--tc:var(--amber)">
+          <span class="tier-num">T-02</span>
+          <div>
+            <div class="tier-name">High <span class="sla instant"><i></i>INSTANT</span></div>
+            <p class="tier-act">Real problems with paying customers on the other end — answered by AI within seconds, grounded in conversation history.</p>
+            <span class="tier-q">Payment gateway is declining every UPI transaction</span>
+          </div>
+        </div>
+        <div class="tier" style="--tc:var(--green)">
+          <span class="tier-num">T-03</span>
+          <div>
+            <div class="tier-name">Normal <span class="sla">HUMAN-IN-LOOP</span></div>
+            <p class="tier-act">A draft reply is generated and queued. A human approves, edits or rejects — nothing leaves without a signature.</p>
+            <span class="tier-q">How do I get a replacement credit card?</span>
+          </div>
+        </div>
+        <div class="tier" style="--tc:var(--grayT)">
+          <span class="tier-num">T-04</span>
+          <div>
+            <div class="tier-name">Low <span class="sla">HUMAN-IN-LOOP</span></div>
+            <p class="tier-act">Praise, small talk, general queries. Acknowledged warmly — by a person, when they have a moment.</p>
+            <span class="tier-q">Absolutely love your product, great job team!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03 SYSTEM ================= -->
+<section id="system">
+  <div class="wrap">
+    <div class="shead rv">
+      <span class="idx">03 / SYSTEM</span>
+      <div>
+        <h2>One private pipeline.<br>Zero third-party APIs.</h2>
+        <p class="lead">Inference stays on a dedicated vLLM instance in AMD Radeon Cloud (ROCm). Memory, routing and approvals all live in your own stack — the context window is filled from your own Postgres, nothing else.</p>
+      </div>
+    </div>
+
+    <div class="diag-wrap rv">
+      <svg viewBox="0 0 1040 470" xmlns="http://www.w3.org/2000/svg" aria-label="Architecture diagram">
+        <defs>
+          <marker id="arw" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#4A5C52"/></marker>
+          <marker id="arwG" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#34D877"/></marker>
+          <marker id="arwR" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#FF4A3D"/></marker>
+        </defs>
+
+        <!-- edges -->
+        <path id="E1" class="edge" d="M208,233 L300,233" marker-end="url(#arw)"/>
+        <text x="216" y="222" class="el">webhook</text>
+        <path id="E2" class="edge" d="M468,233 L556,233" marker-end="url(#arw)"/>
+        <text x="482" y="222" class="el">payload</text>
+        <path id="E3" class="edgeR" d="M792,168 C830,152 838,128 866,114" marker-end="url(#arwR)"/>
+        <text x="778" y="132" class="el nsRed">openai sdk</text>
+        <path id="E4" class="edge" d="M792,302 C830,314 836,332 866,350" marker-end="url(#arw)"/>
+        <text x="800" y="338" class="el">queue / approve</text>
+        <path id="E5" class="edge" d="M674,342 L674,392" marker-start="url(#arw)" marker-end="url(#arw)"/>
+        <text x="688" y="372" class="el">store / fetch ctx</text>
+        <path id="E6" class="edgeG" d="M556,150 C420,64 244,66 120,186" marker-end="url(#arwG)"/>
+        <text x="252" y="82" class="el nsGrn">auto-reply &lt; 2s</text>
+
+        <!-- pulses -->
+        <circle r="3" fill="#34D877"><animateMotion dur="2.2s" repeatCount="indefinite" path="M208,233 L300,233"/></circle>
+        <circle r="3" fill="#34D877"><animateMotion dur="2.2s" begin="0.5s" repeatCount="indefinite" path="M468,233 L556,233"/></circle>
+        <circle r="3" fill="#FF4A3D"><animateMotion dur="1.7s" begin="0.2s" repeatCount="indefinite" path="M792,168 C830,152 838,128 866,114"/></circle>
+        <circle r="3" fill="#FFB224"><animateMotion dur="2s" begin="0.8s" repeatCount="indefinite" path="M792,302 C830,314 836,332 866,350"/></circle>
+        <circle r="3" fill="#8FA39A"><animateMotion dur="1.9s" begin="0.1s" repeatCount="indefinite" path="M674,342 L674,392"/></circle>
+        <circle r="3" fill="#34D877"><animateMotion dur="2.6s" begin="0.6s" repeatCount="indefinite" path="M556,150 C420,64 244,66 120,186"/></circle>
+
+        <!-- nodes -->
+        <rect x="28" y="190" width="180" height="86" rx="10" class="nd"/>
+        <text x="48" y="226" class="nt">WhatsApp</text><text x="48" y="244" class="nt">Business</text>
+        <text x="48" y="262" class="ns">inbound · outbound</text>
+
+        <rect x="300" y="190" width="168" height="86" rx="10" class="nd"/>
+        <text x="320" y="222" class="nt">FastAPI</text>
+        <text x="320" y="242" class="ns">POST /api/webhook/</text><text x="320" y="258" class="ns">message · :8000</text>
+
+        <rect x="556" y="130" width="236" height="212" rx="12" class="nd ndGrn"/>
+        <text x="580" y="162" class="nt">Agent Core</text>
+        <rect x="580" y="180" width="188" height="40" rx="6" class="stp"/><text x="596" y="204" class="st">1 · priority classify</text>
+        <rect x="580" y="228" width="188" height="40" rx="6" class="stp"/><text x="596" y="252" class="st">2 · reply generation</text>
+        <rect x="580" y="276" width="188" height="40" rx="6" class="stp"/><text x="596" y="300" class="st">3 · route &amp; memory</text>
+
+        <rect x="866" y="70" width="150" height="86" rx="10" class="nd ndRed"/>
+        <text x="886" y="102" class="nt">vLLM</text>
+        <text x="886" y="122" class="ns">AMD Radeon Cloud</text><text x="886" y="138" class="ns nsRed">ROCm · private</text>
+
+        <rect x="576" y="392" width="196" height="58" rx="10" class="nd"/>
+        <text x="596" y="418" class="nt">PostgreSQL</text>
+        <text x="596" y="436" class="ns">history · local RAG</text>
+
+        <rect x="866" y="306" width="150" height="98" rx="10" class="nd"/>
+        <text x="886" y="338" class="nt">React</text><text x="886" y="356" class="nt">Dashboard</text>
+        <text x="886" y="376" class="ns">approval queue</text><text x="886" y="392" class="ns">Recharts metrics</text>
+      </svg>
+    </div>
+
+    <div class="stack-ledger rv">
+      <div class="sl-row"><b>Frontend</b><span class="tech">React 18 · Tailwind CSS v4 · Recharts · Lucide</span><span class="role">Operator console, live queue &amp; analytics</span></div>
+      <div class="sl-row"><b>Backend</b><span class="tech">Python 3.11 · FastAPI · SQLAlchemy · OpenAI SDK</span><span class="role">Webhook intake, classification &amp; routing</span></div>
+      <div class="sl-row"><b>Database</b><span class="tech">PostgreSQL</span><span class="role">Multi-turn memory — the local RAG store</span></div>
+      <div class="sl-row"><b>Inference</b><span class="tech">vLLM · AMD Radeon Cloud (ROCm)</span><span class="role">Private LLM — classification &amp; reply generation</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 04 QUICKSTART ================= -->
+<section id="quickstart">
+  <div class="wrap">
+    <div class="shead rv">
+      <span class="idx">04 / RUN IT</span>
+      <div>
+        <h2>From clone to triage<br>in four steps.</h2>
+        <p class="lead">Postgres locally, vLLM on Radeon Cloud, dashboard on Vite. Click a step to load its commands, then copy the whole block straight into your terminal.</p>
+      </div>
+    </div>
+
+    <div class="qs-grid rv">
+      <div class="qs-steps" id="qsSteps"></div>
+      <div class="term">
+        <div class="term-h">
+          <i data-lucide="terminal" style="color:var(--green)"></i>
+          <span class="term-title" id="termTitle">bash — whatsapp-priority-agent</span>
+          <button class="copy-btn" id="btnCopy"><i data-lucide="copy"></i>Copy commands</button>
+        </div>
+        <div class="term-b" id="termBody"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 05 CAPABILITIES ================= -->
+<section id="capabilities">
+  <div class="wrap">
+    <div class="shead rv">
+      <span class="idx">05 / TRACK 2</span>
+      <div>
+        <h2>Requirement by requirement.</h2>
+        <p class="lead">How the build maps to the hackathon's agent checklist — no hand-waving, each capability points at code that ships in the repo.</p>
+      </div>
+    </div>
+    <div class="rv">
+      <div class="cap-row"><span class="cap-id">R-01</span><span class="cap-name">Local Knowledge Retrieval (RAG)</span><span class="cap-desc">Conversation history persisted in PostgreSQL is assembled into the LLM context window on every single turn.</span><span class="cap-ck"><i data-lucide="check"></i></span></div>
+      <div class="cap-row"><span class="cap-id">R-02</span><span class="cap-name">Tool Invocation</span><span class="cap-desc"><span class="mono" style="font-size:12px">/api/webhook/message</span> accepts external triggers — WhatsApp webhooks, cron jobs, CI smoke tests.</span><span class="cap-ck"><i data-lucide="check"></i></span></div>
+      <div class="cap-row"><span class="cap-id">R-03</span><span class="cap-name">Multi-step Task Planning</span><span class="cap-desc">A fixed four-stage pipeline — classify → generate → store → route — with per-stage state and failure handling.</span><span class="cap-ck"><i data-lucide="check"></i></span></div>
+      <div class="cap-row"><span class="cap-id">R-04</span><span class="cap-name">Local Multi-turn Memory</span><span class="cap-desc">Per-contact history is maintained across sessions in Postgres and replayed as context, so replies stay coherent.</span><span class="cap-ck"><i data-lucide="check"></i></span></div>
+      <div class="cap-row"><span class="cap-id">R-05</span><span class="cap-name">Permission Control &amp; Privacy</span><span class="cap-desc">NORMAL and LOW messages are held for human approval — nothing is auto-sent without a rule that says so.</span><span class="cap-ck"><i data-lucide="check"></i></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <p class="close-line rv">Answer in seconds.<br>Escalate with <em>judgment</em>.</p>
+
+    <div class="foot-grid rv">
+      <div>
+        <p class="f-lab">Team</p>
+        <p class="team-name">Sandeep Kumar</p>
+        <p class="team-role">Full-stack development &amp; AI integration</p>
+        <div class="amd-note"><i></i>INFERENCE ON AMD RADEON CLOUD · ROCm</div>
+        <div class="demo-slot" id="demoSlot">
+          <span class="play-c"><i data-lucide="play"></i></span>
+          <span><b>DEMO VIDEO</b><span>coming soon — drops before final submission</span></span>
+        </div>
+      </div>
+      <div>
+        <p class="f-lab">Repository</p>
+        <div class="f-links">
+          <a href="https://github.com/YOUR_USERNAME/whatsapp-priority-agent" target="_blank" rel="noopener"><i data-lucide="github"></i>github.com/…/whatsapp-priority-agent</a>
+          <button data-doc="docs/SPEC.md"><i data-lucide="file-text"></i>docs/SPEC.md</button>
+          <button data-doc="docs/DEPLOYMENT.md"><i data-lucide="rocket"></i>docs/DEPLOYMENT.md</button>
+          <button data-doc="docs/architecture.png"><i data-lucide="image"></i>docs/architecture.png</button>
+        </div>
+      </div>
+      <div>
+        <p class="f-lab">Built for</p>
+        <p style="color:var(--body);font-size:14.5px;line-height:1.7">AMD AI DevMaster Hackathon 2026<br><span style="color:var(--mut)">Track 2 — Development &amp; Local Deployment of Private AI Agents</span></p>
+        <a class="btn btn-ghost" style="margin-top:22px" href="#pipeline"><i data-lucide="arrow-up"></i>Back to the loop</a>
+      </div>
+    </div>
+
+    <div class="foot-bar">
+      <span>© 2026 Sandeep Kumar</span>
+      <span>WhatsApp Priority Agent</span>
+      <span>classify → generate → store → route</span>
+    </div>
+  </div>
+</footer>
+
+<div id="toasts"></div>
+
+<script>
+/* ================= utils ================= */
+const $ = s => document.querySelector(s);
+function icons(){ try{ lucide.createIcons(); }catch(e){} }
+function toast(msg, tone){
+  const t = document.createElement('div');
+  t.className = 'toast' + (tone ? ' ' + tone : '');
+  t.innerHTML = '<i data-lucide="' + (tone === 'red' ? 'zap' : tone === 'amber' ? 'clock' : 'check') + '"></i>' + msg;
+  $('#toasts').appendChild(t); icons();
+  setTimeout(()=>{ t.style.transition = 'opacity .4s'; t.style.opacity = '0'; setTimeout(()=>t.remove(), 420); }, 2600);
+}
+
+/* ================= ticker ================= */
+(function(){
+  const items = 'vLLM · ROCm · AMD Radeon Cloud · FastAPI · PostgreSQL · React 18 · Tailwind v4 · Recharts · SQLAlchemy · OpenAI SDK · multi-turn memory · human-in-the-loop · ';
+  $('#ticker').innerHTML = ('<b>▸</b> ' + items).repeat(2).replace(/· /g, '·&nbsp;&nbsp;');
+})();
+
+/* ================= reveal on scroll ================= */
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+}), { threshold: .12 });
+document.querySelectorAll('.rv').forEach(el => io.observe(el));
+
+/* ================= live pipeline ================= */
+const SCENARIOS = [
+  { c:'Arjun Mehta',  t:"Server is down, we're losing orders every minute!!", p:'URGENT',
+    r:"I've paged the on-call engineer and escalated this as Sev-1. You'll get a status update every 5 minutes until we're back up." },
+  { c:'Priya Nair',   t:'Payment gateway is declining every UPI transaction', p:'HIGH',
+    r:"You're right — the payments team is already on it. Failed charges are auto-refunded and UPI should be back within the hour." },
+  { c:'Rahul Verma',  t:'How do I get a replacement credit card?', p:'NORMAL',
+    r:'Head to Profile → Cards → Replace card. It ships in 3–5 business days. Shall I raise the request for you?' },
+  { c:'Sana Khan',    t:'Absolutely love the new update, brilliant work team!', p:'LOW',
+    r:'Thank you so much — I have passed this straight to the team. It genuinely made their day.' },
+  { c:'Dev Sharma',   t:'URGENT: API has been returning 500s since 2pm IST', p:'URGENT',
+    r:'Confirmed — we isolated the regression and rolled back the last deploy. Error rates are recovering now.' },
+  { c:'Meera Iyer',   t:'My March invoice has the wrong GST amount', p:'HIGH',
+    r:'Apologies for that — I have flagged the invoice to billing with priority. A corrected copy reaches you today.' },
+  { c:'Karan Patel',  t:'Do you have an office in Bangalore I can visit?', p:'LOW',
+    r:'Yes — we are at Indiranagar 100ft Road, Mon–Sat 10am–7pm. Want me to book you a slot?' },
+  { c:'Anita Rao',    t:'My KYC verification has been stuck for two days', p:'HIGH',
+    r:'Sorry for the delay — I have pushed your KYC to the front of the verification queue. It should clear within a few hours.' },
+  { c:'Vikram Singh', t:'What are your support hours on weekends?', p:'NORMAL',
+    r:'Weekend support runs 9am–6pm IST on chat, and 24×7 for urgent issues. Anything I can help with right now?' },
+  { c:'Farah Ali',    t:'The export feature keeps timing out on large files', p:'HIGH',
+    r:'Thanks for the report — reproduced and escalated to engineering. Large exports are being retried automatically.' },
+];
+const AVCOLORS = ['#FF8A65','#4DB6AC','#9575CD','#F06292','#AED581','#4FC3F7','#FFD54F'];
+const AUTO = { URGENT:true, HIGH:true, NORMAL:false, LOW:false };
+const PRIO_COLOR = { URGENT:'var(--red)', HIGH:'var(--amber)', NORMAL:'var(--green)', LOW:'var(--grayT)' };
+
+let paused = false, skipWait = false, fast = false, nextScenario = null;
+let pool = [], poolIdx = 0;
+const stats = { proc:0, auto:0, q:0, lat:0, latN:0 };
+
+function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.random()*(i+1)|0; [a[i],a[j]] = [a[j],a[i]]; } return a; }
+pool = shuffle(SCENARIOS);
+function pick(){ if (poolIdx >= pool.length){ pool = shuffle(SCENARIOS); poolIdx = 0; } return pool[poolIdx++]; }
+
+function sleep(ms){
+  return new Promise(res => {
+    let acc = 0, last = performance.now();
+    function step(t){
+      if (skipWait){ skipWait = false; res(); return; }
+      if (!paused) acc += t - last;
+      last = t;
+      if (acc >= ms) res(); else requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+const now = () => new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+const initials = n => n.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+function addLog(html){
+  const box = $('#alog'), d = document.createElement('div');
+  d.className = 'log-line'; d.innerHTML = '<span class="k">▸</span> ' + html;
+  box.appendChild(d);
+  while (box.children.length > 14) box.firstChild.remove();
+}
+function addInbound(sc){
+  const f = $('#feed'), d = document.createElement('div');
+  d.className = 'msg';
+  d.innerHTML = '<div class="msg-top"><span class="av" style="background:' + AVCOLORS[sc.c.length % AVCOLORS.length] + '">' + initials(sc.c) + '</span>'
+    + '<span class="msg-name">' + sc.c + '</span><span class="msg-time">' + now() + '</span></div>'
+    + '<div class="msg-text">' + sc.t + '</div>';
+  f.appendChild(d);
+  while (f.children.length > 4) f.firstChild.remove();
+}
+function updateStats(){
+  $('#stProc').textContent = stats.proc;
+  $('#stAuto').textContent = stats.auto;
+  $('#stQ').textContent = stats.q;
+  $('#stLat').textContent = stats.latN ? (stats.lat / stats.latN).toFixed(2) + 's' : '—';
+}
+function showStamp(sc){
+  const s = $('#stamp');
+  s.className = 'stamp p-' + sc.p;
+  s.innerHTML = sc.p + '<small>p=' + (0.86 + Math.random()*0.12).toFixed(2) + '</small>';
+  void s.offsetWidth; s.classList.add('on');
+}
+function typeReply(text){
+  return new Promise(async res => {
+    const d = $('#draft'); d.innerHTML = '<span class="caret"></span>';
+    const span = document.createElement('span'); d.prepend(span);
+    for (const ch of text){ span.textContent += ch; await sleep(fast ? 0 : 13); }
+    d.querySelector('.caret').remove(); res();
+  });
+}
+function addSent(sc, lat){
+  const l = $('#sentLog'), d = document.createElement('div');
+  d.className = 'sent-row';
+  d.innerHTML = '<span class="ck"><i data-lucide="check"></i></span><b>' + sc.c + '</b>'
+    + '<span style="color:' + PRIO_COLOR[sc.p] + '">' + sc.p + '</span><span class="pt">' + lat + 's</span>';
+  l.prepend(d);
+  while (l.children.length > 6) l.lastChild.remove();
+  $('#sentCount').textContent = stats.auto;
+  icons();
+}
+function addQueue(sc){
+  const q = $('#queue'), d = document.createElement('div');
+  d.className = 'q-item'; d.dataset.name = sc.c;
+  d.innerHTML = '<div class="q-top"><span class="q-name">' + sc.c + '</span><span class="q-pr ' + sc.p + '">' + sc.p + '</span></div>'
+    + '<div class="q-draft">' + sc.r + '</div>'
+    + '<div class="q-acts"><button class="q-btn ap" data-act="approve"><i data-lucide="check"></i>Approve</button>'
+    + '<button class="q-btn rj" data-act="reject"><i data-lucide="x"></i>Reject</button></div>';
+  q.prepend(d);
+  while (q.children.length > 4) q.lastChild.remove();
+  $('#qCount').textContent = stats.q;
+  icons();
+}
+ $('#queue').addEventListener('click', e => {
+  const b = e.target.closest('.q-btn'); if (!b) return;
+  const item = b.closest('.q-item'), name = item.dataset.name;
+  item.querySelectorAll('.q-btn').forEach(x => x.remove());
+  if (b.dataset.act === 'approve'){
+    item.classList.add('done');
+    item.insertAdjacentHTML('beforeend', '<div class="q-state"><i data-lucide="send"></i>approved — sent to ' + name.split(' ')[0] + '</div>');
+    toast('Reply approved & sent to ' + name);
+  } else {
+    item.classList.add('rej');
+    item.insertAdjacentHTML('beforeend', '<div class="q-state" style="color:var(--mut)"><i data-lucide="archive"></i>rejected — flagged for follow-up</div>');
+    toast('Rejected — ' + name + ' flagged for follow-up', 'amber');
+  }
+  icons();
+});
+
+async function runScenario(sc){
+  $('#stamp').classList.remove('on'); $('#stamp').className = 'stamp';
+  $('#draft').innerHTML = ''; $('#draftLab').style.display = 'none';
+
+  addInbound(sc);
+  addLog('<span class="k">webhook</span> <span class="v">POST /api/webhook/message</span> <span class="ok">200</span>');
+  await sleep(520);
+  addLog('<span class="k">memory</span> <span class="v">history for ' + sc.c.toLowerCase().replace(' ','.') + '</span> · ' + (5 + (Math.random()*12|0)) + ' turns');
+  await sleep(480);
+  showStamp(sc);
+  addLog('<span class="k">classify</span> <span class="v" style="color:' + PRIO_COLOR[sc.p] + ';font-weight:700">' + sc.p + '</span> · p=' + (0.86 + Math.random()*0.12).toFixed(2) + ' · ' + (140 + (Math.random()*160|0)) + 'ms');
+  await sleep(760);
+  $('#draftLab').style.display = 'flex'; icons();
+  addLog('<span class="k">generate</span> <span class="v">vllm · ROCm</span> streaming…');
+  await sleep(340);
+  await typeReply(sc.r);
+  await sleep(420);
+
+  const lat = (0.9 + Math.random()*1.3).toFixed(2);
+  stats.proc++;
+  if (AUTO[sc.p]){
+    stats.auto++;
+    addLog('<span class="k">decision</span> <span class="ok">AUTO-REPLY — sent ✓</span> · total ' + lat + 's');
+    addSent(sc, lat);
+  } else {
+    stats.q++;
+    addLog('<span class="k">decision</span> <span class="warn">APPROVAL QUEUE — held for human</span>');
+    addQueue(sc);
+  }
+  stats.lat += +lat; stats.latN++;
+  updateStats();
+}
+
+async function loop(){
+  // seed a couple of log lines
+  addLog('<span class="k">system</span> <span class="v">agent core online</span> · vllm/ROCm <span class="ok">ready</span>');
+  await sleep(900);
+  while (true){
+    const sc = nextScenario || pick();
+    nextScenario = null;
+    await runScenario(sc);
+    fast = false;
+    await sleep(1700);
+  }
+}
+
+ $('#btnPause').addEventListener('click', function(){
+  paused = !paused;
+  this.innerHTML = paused ? '<i data-lucide="play"></i>Resume loop' : '<i data-lucide="pause"></i>Pause loop';
+  const tag = $('#liveTag');
+  tag.classList.toggle('paused', paused);
+  tag.innerHTML = '<i class="dot"></i>' + (paused ? 'PAUSED' : 'LIVE');
+  icons();
+});
+ $('#btnInject').addEventListener('click', () => {
+  const urgents = SCENARIOS.filter(s => s.p === 'URGENT');
+  nextScenario = urgents[Math.random()*urgents.length|0];
+  skipWait = true; fast = true;
+  toast('Injected: "' + nextScenario.t.slice(0, 34) + '…"', 'red');
+});
+ $('#demoSlot').addEventListener('click', () => toast('Demo video lands before final submission — the README links it when ready.'));
+document.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () =>
+  toast(b.dataset.doc + ' ships inside the repository')));
+
+/* ================= quickstart terminal ================= */
+const TT = {
+  setup: { label:'Clone', title:'01 — clone the repository', lines:[
+    ['c','# clone the repository'],
+    ['x','git clone https://github.com/YOUR_USERNAME/whatsapp-priority-agent.git'],
+    ['x','cd whatsapp-priority-agent'],
+  ]},
+  backend: { label:'Backend', title:'02 — backend · python 3.11 + fastapi', lines:[
+    ['c','# move into the backend'],
+    ['x','cd backend'],
+    ['x','python -m venv venv && source venv/bin/activate'],
+    ['x','pip install -r requirements.txt'],
+    ['x','cp .env.example .env'],
+    ['c','#   add your AMD Radeon Cloud vLLM credentials to .env'],
+    ['x','createdb whatsapp_agent'],
+    ['x','python main.py'],
+    ['o','→ API live at http://0.0.0.0:8000'],
+  ]},
+  frontend: { label:'Frontend', title:'03 — frontend · react 18 + vite', lines:[
+    ['c','# open a second terminal'],
+    ['x','cd frontend'],
+    ['x','npm install'],
+    ['x','npm run dev'],
+    ['o','→ dashboard live at http://localhost:5173'],
+  ]},
+  verify: { label:'Verify', title:'04 — simulate an inbound webhook', lines:[
+    ['c','# fire a test message at the webhook'],
+    ['x','curl -X POST http://localhost:8000/api/webhook/message \\'],
+    ['x','  -H "Content-Type: application/json" \\'],
+    ['x',`  -d '{"from":"+9198xxxx4821","text":"Payments are failing"}'`],
+    ['c','# → watch it classify, generate and route in the dashboard'],
+  ]},
+};
+const STEP_META = [
+  ['setup','Clone repo','git clone + cd'],
+  ['backend','Start backend','venv · deps · postgres · main.py'],
+  ['frontend','Start frontend','npm install · npm run dev'],
+  ['verify','Fire a test','curl the webhook endpoint'],
+];
+let curTab = 'setup';
+
+function renderSteps(){
+  $('#qsSteps').innerHTML = STEP_META.map(([k,t,d]) =>
+    '<button class="qs-step' + (k === curTab ? ' active' : '') + '" data-tab="' + k + '">'
+    + '<span class="n">' + String(STEP_META.findIndex(m => m[0] === k) + 1).padStart(2,'0') + '</span>'
+    + '<span><span class="t">' + t + '</span><span class="d" style="display:block">' + d + '</span></span></button>').join('');
+}
+function renderTerm(){
+  const t = TT[curTab];
+  $('#termTitle').textContent = 'bash — ' + t.title;
+  $('#termBody').innerHTML = t.lines.map(([ty, tx]) => '<span class="tl"><span class="' + ty + '">' + tx + '</span></span>').join('');
+}
+ $('#qsSteps').addEventListener('click', e => {
+  const b = e.target.closest('.qs-step'); if (!b) return;
+  curTab = b.dataset.tab; renderSteps(); renderTerm();
+});
+ $('#btnCopy').addEventListener('click', () => {
+  const cmds = TT[curTab].lines.filter(l => l[0] === 'x').map(l => l[1]).join('\n');
+  navigator.clipboard.writeText(cmds)
+    .then(() => toast('Commands copied — paste into your terminal'))
+    .catch(() => toast('Clipboard blocked by browser', 'red'));
+});
+renderSteps(); renderTerm();
+
+/* ================= go ================= */
+icons();
+loop();
+</script>
+</body>
+</html>

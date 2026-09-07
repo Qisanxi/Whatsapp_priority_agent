@@ -234,8 +234,16 @@ whatsapp-priority-agent/
 │   ├── DEPLOYMENT.md
 │   └── architecture.png
 │
+├── landing.html
+│
 └── README.md
 ```
+
+---
+
+# 🎨 Landing Page
+
+A standalone product landing page for the project lives in [`landing.html`](./landing.html) — a self-contained HTML file (no build step required). Open it directly in a browser, or serve it statically (e.g. `python -m http.server`) to showcase the project.
 
 ---
 
