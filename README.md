@@ -22,6 +22,92 @@ Critical issues receive AI-generated responses within seconds, while non-urgent 
 
 ---
 
+# 🗺️ System Architecture
+
+The system is organized into four tiers. On the client side, inbound WhatsApp traffic enters through the webhook while admins work in the React dashboard. The FastAPI backend hosts both the webhook endpoint and the agent services (priority classification + reply generation), calling a dedicated vLLM instance running **Qwen2.5-7B-Instruct** on an **AMD Radeon GPU (ROCm)** through an OpenAI-compatible API. PostgreSQL persists every message together with its conversation history, which provides the multi-turn memory used for context.
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontSize":"14px","primaryTextColor":"#1E293B","lineColor":"#94A3B8","clusterBkg":"#F8FAFC","clusterBorder":"#E2E8F0"},"flowchart":{"curve":"basis","padding":32,"nodeSpacing":80,"rankSpacing":80,"htmlLabels":true}}}%%
+flowchart LR
+    subgraph CLIENTS["Clients"]
+        direction TB
+        WA["WhatsApp Business<br/>customer messages"]
+        UI["Admin Dashboard<br/>React 18 + Vite :5173"]
+    end
+
+    subgraph BE["FastAPI Backend :8000"]
+        direction TB
+        HOOK["Webhook<br/>POST /api/webhook/message"]
+        AGENT["Agent Services<br/>classify_priority()<br/>generate_reply()"]
+        ADMIN["Inbox · Threads<br/>Approve · Stats APIs"]
+    end
+
+    subgraph AMD["AMD Radeon Cloud"]
+        direction TB
+        VLLM["vLLM on ROCm GPU<br/>Qwen2.5-7B-Instruct<br/>OpenAI-compatible API"]
+    end
+
+    subgraph DB["Data Layer"]
+        direction TB
+        PG[("PostgreSQL<br/>messages · conversation<br/>history")]
+    end
+
+    WA -->|"inbound message"| HOOK
+    HOOK --> AGENT
+    AGENT -->|"chat.completions"| VLLM
+    HOOK -->|"persist"| PG
+    UI --> ADMIN
+    ADMIN -->|"read / update"| PG
+
+    classDef client fill:#EFF6FF,stroke:#3B82F6,color:#1E293B
+    classDef api fill:#F8FAFC,stroke:#64748B,color:#0F172A
+    classDef ai fill:#FEF2F2,stroke:#DC2626,color:#7F1D1D
+    classDef store fill:#F0FDF4,stroke:#10B981,color:#064E3B
+    class WA,UI client
+    class HOOK,AGENT,ADMIN api
+    class VLLM ai
+    class PG store
+```
+
+> A static reference diagram is also available at [`docs/architecture.png`](./docs/architecture.png).
+
+---
+
+# 🔄 Message Processing Flow
+
+Every inbound message follows the same pipeline: the webhook triggers a low-temperature LLM call to classify priority, a tone-matched reply is generated, and the message is routed based on its label. **URGENT** and **HIGH** messages are answered instantly by the AI, while **NORMAL** and **LOW** messages are held in the approval queue until an admin approves, edits, or rejects the draft. Every outcome — sent, rejected, or pending — is written to PostgreSQL so the conversation history stays complete.
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontSize":"14px","primaryTextColor":"#1E293B","lineColor":"#94A3B8"},"flowchart":{"curve":"basis","padding":32,"nodeSpacing":80,"rankSpacing":80,"htmlLabels":true}}}%%
+flowchart TD
+    A["Inbound WhatsApp message<br/>POST /api/webhook/message"] --> B["classify_priority()<br/>LLM call · temperature 0.1"]
+    B --> D["generate_reply()<br/>priority-aware tone prompt"]
+    D --> F{"Priority?"}
+    F -->|"URGENT / HIGH"| G["Auto-reply sent instantly<br/>status = replied"]
+    F -->|"NORMAL / LOW"| H["Queued for human approval<br/>status = pending"]
+    H --> I{"Admin decision"}
+    I -->|"Approve / edit"| J["Reply sent<br/>status = replied"]
+    I -->|"Reject"| K["Draft discarded<br/>status = rejected"]
+    G --> L[("PostgreSQL<br/>message + conversation history")]
+    J --> L
+    K --> L
+
+    classDef step fill:#EFF6FF,stroke:#3B82F6,color:#1E293B
+    classDef decision fill:#FFF7ED,stroke:#F59E0B,color:#78350F
+    classDef replied fill:#F0FDF4,stroke:#10B981,color:#064E3B
+    classDef human fill:#F5F3FF,stroke:#7C3AED,color:#4C1D95
+    classDef rejected fill:#FEF2F2,stroke:#DC2626,color:#7F1D1D
+    classDef store fill:#F0FDF4,stroke:#10B981,color:#064E3B
+    class A,B,D step
+    class F,I decision
+    class G,J replied
+    class H human
+    class K rejected
+    class L store
+```
+
+---
+
 # 🏗️ Tech Stack
 
 ### Frontend
