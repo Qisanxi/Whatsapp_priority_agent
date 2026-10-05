@@ -21,6 +21,12 @@ An AI-powered WhatsApp Business agent that automatically classifies incoming mes
 Critical issues receive AI-generated responses within seconds, while non-urgent conversations remain in the approval queue for human review.
 
 ---
+# 🎥 Demo Video
+
+> **Video Link** : (https://youtube.com/shorts/BaivNCcSk3M?feature=share)
+
+
+---
 
 # 🗺️ System Architecture
 
@@ -352,14 +358,6 @@ Routing is handled by `react-router-dom`, so deep links like `/app` survive a pa
 | ✅ Multi-step Task Planning | Classify → Generate → Store → Auto-reply / Queue |
 | ✅ Local Multi-turn Memory | Conversation history maintained for each contact |
 | ✅ Permission Control & Privacy | Human approval required for NORMAL and LOW priority messages |
-
----
-
-# 🎥 Demo Video
-
-> **Coming Soon**
-
-Replace this section with your YouTube or Google Drive demo link before submission.
 
 ---
 
